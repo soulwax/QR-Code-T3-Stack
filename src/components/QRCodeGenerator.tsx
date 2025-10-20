@@ -1,9 +1,5 @@
-// File: src/components/QRCodeGenerator.tsx
-
-"use client";
-
-import { Check, Copy, Download, Link, MessageSquare, QrCode, User } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Check, Copy, Download, Link, MessageSquare, QrCode, User } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 const TRANSLATIONS = {
   "en-US": {
@@ -41,7 +37,14 @@ const TRANSLATIONS = {
     "copied": "Copied!",
     "qrCodeData": "QR Code Data:",
     "footerText": "Generate QR codes instantly • No data stored • Free to use",
-    "qrCodeAlt": "Generated QR Code"
+    "qrCodeAlt": "Generated QR Code",
+    "downloadSizeLabel": "Download Size (Higher = Better Quality)",
+    "downloadSizeHelp": "Larger sizes preserve quality when scaled up",
+    "sizeSmall": "500px - Small (Web)",
+    "sizeMedium": "1000px - Medium (Recommended)",
+    "sizeLarge": "2000px - Large (Print)",
+    "sizeXLarge": "4000px - Extra Large (Poster)",
+    "sizeMaximum": "8000px - Maximum Quality"
   },
   "es-ES": {
     "appTitle": "Generador de Códigos QR",
@@ -78,36 +81,33 @@ const TRANSLATIONS = {
     "copied": "¡Copiado!",
     "qrCodeData": "Datos del Código QR:",
     "footerText": "Genera códigos QR al instante • No se almacenan datos • Gratis",
-    "qrCodeAlt": "Código QR Generado"
+    "qrCodeAlt": "Código QR Generado",
+    "downloadSizeLabel": "Tamaño de Descarga (Mayor = Mejor Calidad)",
+    "downloadSizeHelp": "Tamaños más grandes preservan la calidad al escalar",
+    "sizeSmall": "500px - Pequeño (Web)",
+    "sizeMedium": "1000px - Mediano (Recomendado)",
+    "sizeLarge": "2000px - Grande (Imprimir)",
+    "sizeXLarge": "4000px - Extra Grande (Póster)",
+    "sizeMaximum": "8000px - Máxima Calidad"
   }
 };
 
-// Helper function to detect locale safely (only on client)
-const getLocale = (): keyof typeof TRANSLATIONS => {
-  // Check if we're in the browser
-  if (typeof window === 'undefined') {
-    return 'en-US';
-  }
-
-  const browserLocale = navigator.languages?.[0] || navigator.language || 'en-US';
-  
-  const findMatchingLocale = (locale: string): keyof typeof TRANSLATIONS => {
-    if (TRANSLATIONS[locale as keyof typeof TRANSLATIONS]) {
-      return locale as keyof typeof TRANSLATIONS;
-    }
-    const lang = locale.split('-')[0];
-    const match = Object.keys(TRANSLATIONS).find(key => key.startsWith(lang + '-'));
-    return (match as keyof typeof TRANSLATIONS) || 'en-US';
-  };
-
-  return findMatchingLocale(browserLocale);
+const appLocale = '{{APP_LOCALE}}';
+const browserLocale = navigator.languages?.[0] || navigator.language || 'en-US';
+const findMatchingLocale = (locale: string): string => {
+  if (TRANSLATIONS[locale as keyof typeof TRANSLATIONS]) return locale;
+  const lang = locale.split('-')[0];
+  const match = Object.keys(TRANSLATIONS).find(key => key.startsWith(lang + '-'));
+  return match || 'en-US';
 };
+const locale = (appLocale !== '{{APP_LOCALE}}') ? findMatchingLocale(appLocale) : findMatchingLocale(browserLocale);
+const t = (key: string) => TRANSLATIONS[locale as keyof typeof TRANSLATIONS]?.[key as keyof typeof TRANSLATIONS['en-US']] || TRANSLATIONS['en-US'][key as keyof typeof TRANSLATIONS['en-US']] || key;
 
 const QRCodeGenerator = () => {
-  const [locale, setLocale] = useState<keyof typeof TRANSLATIONS>('en-US');
   const [activeTab, setActiveTab] = useState('url');
   const [qrData, setQrData] = useState('');
   const [copied, setCopied] = useState(false);
+  const [downloadSize, setDownloadSize] = useState(1000);
   const qrContainerRef = useRef<HTMLDivElement>(null);
   
   // Form states for different types
@@ -122,17 +122,8 @@ const QRCodeGenerator = () => {
     url: ''
   });
 
-  // Detect locale on client side only
-  useEffect(() => {
-    setLocale(getLocale());
-  }, []);
-
-  // Translation helper
-  const t = (key: keyof typeof TRANSLATIONS['en-US']): string => {
-    return TRANSLATIONS[locale]?.[key] || TRANSLATIONS['en-US'][key] || key;
-  };
-
-  const generateQRCode = async (text: string): Promise<void> => {
+  // QR Code generation using QRious library via CDN
+  const generateQRCode = async (text: string) => {
     if (!text.trim()) {
       if (qrContainerRef.current) {
         qrContainerRef.current.innerHTML = '';
@@ -171,7 +162,7 @@ const QRCodeGenerator = () => {
       qrContainerRef.current.appendChild(canvas);
       
       // Generate QR code
-      new (window as any).QRious({
+      const qr = new (window as any).QRious({
         element: canvas,
         value: text,
         size: 300,
@@ -191,7 +182,7 @@ const QRCodeGenerator = () => {
     }
   };
 
-  const generateFallbackQR = (text: string) => {
+  const generateFallbackQR = (text: string | number | boolean) => {
     if (!qrContainerRef.current) return;
     
     // Clear previous content
@@ -215,7 +206,7 @@ const QRCodeGenerator = () => {
     qrContainerRef.current.appendChild(img);
   };
 
-  const formatUrl = (url: string): string => {
+  const formatUrl = (url: string) => {
     if (!url.trim()) return '';
     
     // Add protocol if missing
@@ -225,7 +216,7 @@ const QRCodeGenerator = () => {
     return url;
   };
 
-  const generateVCard = (contact: typeof contactInfo): string => {
+  const generateVCard = (contact: { firstName: any; lastName: any; phone: any; email: any; organization: any; url: any; }) => {
     const vcard = `BEGIN:VCARD
 VERSION:3.0
 FN:${contact.firstName} ${contact.lastName}
@@ -258,27 +249,51 @@ END:VCARD`;
     }
     
     setQrData(data);
-    void generateQRCode(data);
+    generateQRCode(data);
   }, [activeTab, urlInput, textInput, contactInfo]);
 
   const downloadQRCode = () => {
     if (!qrData) return;
     
-    const canvas = qrContainerRef.current?.querySelector('canvas');
-    const img = qrContainerRef.current?.querySelector('img');
-    
-    if (canvas) {
-      // Download from canvas
-      const link = document.createElement('a');
-      link.download = `qr-code-${activeTab}.png`;
-      link.href = canvas.toDataURL();
-      link.click();
-    } else if (img) {
-      // Download from image
-      const link = document.createElement('a');
-      link.download = `qr-code-${activeTab}.png`;
-      link.href = img.src;
-      link.click();
+    try {
+      // Create a temporary high-resolution canvas
+      const tempCanvas = document.createElement('canvas');
+      
+      if ((window as any).QRious) {
+        // Generate high-res QR code at the selected download size
+        new (window as any).QRious({
+          element: tempCanvas,
+          value: qrData,
+          size: downloadSize,
+          background: 'white',
+          foreground: 'black',
+          level: 'H' // High error correction
+        });
+        
+        // Download the high-res version
+        const link = document.createElement('a');
+        link.download = `qr-code-${activeTab}-${downloadSize}px.png`;
+        link.href = tempCanvas.toDataURL('image/png');
+        link.click();
+      } else {
+        // Fallback to displaying canvas if QRious not available
+        const canvas = qrContainerRef.current?.querySelector('canvas');
+        const img = qrContainerRef.current?.querySelector('img');
+        
+        if (canvas) {
+          const link = document.createElement('a');
+          link.download = `qr-code-${activeTab}.png`;
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+        } else if (img) {
+          const link = document.createElement('a');
+          link.download = `qr-code-${activeTab}.png`;
+          link.href = img.src;
+          link.click();
+        }
+      }
+    } catch (error) {
+      console.error('Error downloading QR code:', error);
     }
   };
 
@@ -516,41 +531,61 @@ END:VCARD`;
                 </div>
 
                 {qrData && (
-                  <div className="flex gap-4 w-full max-w-sm">
-                    <button
-                      onClick={downloadQRCode}
-                      className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all duration-200 font-medium shadow-lg"
-                    >
-                      <Download className="w-4 h-4" />
-                      {t('download')}
-                    </button>
-                    
-                    <button
-                      onClick={copyToClipboard}
-                      className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-200 font-medium"
-                    >
-                      {copied ? (
-                        <>
-                          <Check className="w-4 h-4 text-green-600" />
-                          {t('copied')}
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-4 h-4" />
-                          {t('copyData')}
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
-
-                {qrData && (
-                  <div className="w-full max-w-sm">
-                    <h3 className="text-sm font-medium text-gray-700 mb-2">{t('qrCodeData')}</h3>
-                    <div className="bg-gray-100 rounded-lg p-3 text-xs text-gray-600 max-h-32 overflow-y-auto">
-                      <pre className="whitespace-pre-wrap break-words">{qrData}</pre>
+                  <>
+                    <div className="w-full max-w-sm">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {t('downloadSizeLabel')}
+                      </label>
+                      <select
+                        value={downloadSize}
+                        onChange={(e) => setDownloadSize(Number(e.target.value))}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white"
+                      >
+                        <option value={500}>{t('sizeSmall')}</option>
+                        <option value={1000}>{t('sizeMedium')}</option>
+                        <option value={2000}>{t('sizeLarge')}</option>
+                        <option value={4000}>{t('sizeXLarge')}</option>
+                        <option value={8000}>{t('sizeMaximum')}</option>
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {t('downloadSizeHelp')}
+                      </p>
                     </div>
-                  </div>
+                    
+                    <div className="flex gap-4 w-full max-w-sm">
+                      <button
+                        onClick={downloadQRCode}
+                        className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all duration-200 font-medium shadow-lg"
+                      >
+                        <Download className="w-4 h-4" />
+                        {t('download')}
+                      </button>
+                      
+                      <button
+                        onClick={copyToClipboard}
+                        className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-200 font-medium"
+                      >
+                        {copied ? (
+                          <>
+                            <Check className="w-4 h-4 text-green-600" />
+                            {t('copied')}
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-4 h-4" />
+                            {t('copyData')}
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="w-full max-w-sm">
+                      <h3 className="text-sm font-medium text-gray-700 mb-2">{t('qrCodeData')}</h3>
+                      <div className="bg-gray-100 rounded-lg p-3 text-xs text-gray-600 max-h-32 overflow-y-auto">
+                        <pre className="whitespace-pre-wrap break-words">{qrData}</pre>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
