@@ -1,6 +1,7 @@
 // File: src/app/layout.tsx
 
 import { type Metadata } from "next";
+// @ts-expect-error: CSS import
 import "~/styles/globals.css";
 
 export const metadata: Metadata = {
