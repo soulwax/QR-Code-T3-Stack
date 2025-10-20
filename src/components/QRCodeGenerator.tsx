@@ -1,5 +1,4 @@
-// File: src/components/QRCodeGenerator.tsx
-"use client"; // <-- ADD THIS LINE AT THE TOP
+"use client";
 
 import {
     Check,
@@ -11,142 +10,41 @@ import {
     User,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "~/hooks/useTranslation";
 
-const TRANSLATIONS = {
-  "en-US": {
-    appTitle: "QR Code Generator",
-    appDescription: "Generate QR codes for URLs, text, and contact information",
-    urlTab: "URL",
-    textTab: "Text",
-    contactTab: "Contact",
-    enterUrl: "Enter URL",
-    enterText: "Enter Text",
-    contactInformation: "Contact Information",
-    websiteUrl: "Website URL",
-    urlPlaceholder: "example.com or https://example.com",
-    urlHelp:
-      "Enter a website URL. If you don't include http://, we'll add https:// automatically.",
-    textContent: "Text Content",
-    textPlaceholder: "Enter any text to generate QR code...",
-    firstName: "First Name",
-    firstNamePlaceholder: "John",
-    lastName: "Last Name",
-    lastNamePlaceholder: "Doe",
-    phoneNumber: "Phone Number",
-    phonePlaceholder: "+1 (555) 123-4567",
-    emailAddress: "Email Address",
-    emailPlaceholder: "john.doe@example.com",
-    organization: "Organization",
-    organizationPlaceholder: "Company Name",
-    website: "Website",
-    websitePlaceholder: "https://example.com",
-    clearAllFields: "Clear All Fields",
-    generatedQrCode: "Generated QR Code",
-    scanQrCode: "Scan this QR code with your device",
-    fillFormPrompt: "Fill in the form to generate your QR code",
-    download: "Download",
-    copyData: "Copy Data",
-    copied: "Copied!",
-    qrCodeData: "QR Code Data:",
-    footerText: "Generate QR codes instantly • No data stored • Free to use",
-    qrCodeAlt: "Generated QR Code",
-    downloadSizeLabel: "Download Size (Higher = Better Quality)",
-    downloadSizeHelp: "Larger sizes preserve quality when scaled up",
-    sizeSmall: "500px - Small (Web)",
-    sizeMedium: "1000px - Medium (Recommended)",
-    sizeLarge: "2000px - Large (Print)",
-    sizeXLarge: "4000px - Extra Large (Poster)",
-    sizeMaximum: "8000px - Maximum Quality",
-  },
-  "es-ES": {
-    appTitle: "Generador de Códigos QR",
-    appDescription:
-      "Genera códigos QR para URLs, texto e información de contacto",
-    urlTab: "URL",
-    textTab: "Texto",
-    contactTab: "Contacto",
-    enterUrl: "Ingresa URL",
-    enterText: "Ingresa Texto",
-    contactInformation: "Información de Contacto",
-    websiteUrl: "URL del Sitio Web",
-    urlPlaceholder: "ejemplo.com o https://ejemplo.com",
-    urlHelp:
-      "Ingresa una URL de sitio web. Si no incluyes http://, agregaremos https:// automáticamente.",
-    textContent: "Contenido de Texto",
-    textPlaceholder: "Ingresa cualquier texto para generar código QR...",
-    firstName: "Nombre",
-    firstNamePlaceholder: "Juan",
-    lastName: "Apellido",
-    lastNamePlaceholder: "Pérez",
-    phoneNumber: "Número de Teléfono",
-    phonePlaceholder: "+1 (555) 123-4567",
-    emailAddress: "Dirección de Correo",
-    emailPlaceholder: "juan.perez@ejemplo.com",
-    organization: "Organización",
-    organizationPlaceholder: "Nombre de la Empresa",
-    website: "Sitio Web",
-    websitePlaceholder: "https://ejemplo.com",
-    clearAllFields: "Limpiar Todos los Campos",
-    generatedQrCode: "Código QR Generado",
-    scanQrCode: "Escanea este código QR con tu dispositivo",
-    fillFormPrompt: "Completa el formulario para generar tu código QR",
-    download: "Descargar",
-    copyData: "Copiar Datos",
-    copied: "¡Copiado!",
-    qrCodeData: "Datos del Código QR:",
-    footerText:
-      "Genera códigos QR al instante • No se almacenan datos • Gratis",
-    qrCodeAlt: "Código QR Generado",
-    downloadSizeLabel: "Tamaño de Descarga (Mayor = Mejor Calidad)",
-    downloadSizeHelp: "Tamaños más grandes preservan la calidad al escalar",
-    sizeSmall: "500px - Pequeño (Web)",
-    sizeMedium: "1000px - Mediano (Recomendado)",
-    sizeLarge: "2000px - Grande (Imprimir)",
-    sizeXLarge: "4000px - Extra Grande (Póster)",
-    sizeMaximum: "8000px - Máxima Calidad",
-  },
-};
-
-// Helper function to detect locale safely (only on client)
-const getLocale = (): keyof typeof TRANSLATIONS => {
-  // Check if we're in the browser
-  if (typeof window === "undefined") {
-    return "en-US";
+declare global {
+  interface Window {
+    QRious: any;
   }
+}
 
-  const browserLocale =
-    navigator.languages?.[0] || navigator.language || "en-US";
 
-  const findMatchingLocale = (locale: string): keyof typeof TRANSLATIONS => {
-    if (TRANSLATIONS[locale as keyof typeof TRANSLATIONS]) {
-      return locale as keyof typeof TRANSLATIONS;
-    }
-    const lang = locale.split("-")[0];
-    const match = Object.keys(TRANSLATIONS).find((key) =>
-      key.startsWith(lang + "-"),
-    );
-    return (match as keyof typeof TRANSLATIONS) || "en-US";
-  };
-
-  return findMatchingLocale(browserLocale);
-};
 
 const QRCodeGenerator = () => {
-  const [locale, setLocale] = useState<keyof typeof TRANSLATIONS>("en-US");
+  const { t, locale } = useTranslation();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setLocale(getLocale());
+    setMounted(true);
   }, []);
 
-  const t = (key: keyof (typeof TRANSLATIONS)["en-US"]): string => {
-    return TRANSLATIONS[locale]?.[key] || TRANSLATIONS["en-US"][key] || key;
-  };
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 p-4 flex items-center justify-center">
+        <div className="text-center">
+          <QrCode className="h-16 w-16 text-purple-600 mx-auto mb-4 animate-pulse" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
 
   const [activeTab, setActiveTab] = useState("url");
   const [qrData, setQrData] = useState("");
   const [copied, setCopied] = useState(false);
   const [downloadSize, setDownloadSize] = useState(1000);
-  const qrContainerRef = useRef<HTMLDivElement>(null);
+  const qrContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Form states for different types
   const [urlInput, setUrlInput] = useState("");
@@ -171,7 +69,7 @@ const QRCodeGenerator = () => {
 
     try {
       // Load QRious library dynamically
-      if (!(window as any).QRious) {
+      if (!window.QRious) {
         const script = document.createElement("script");
         script.src =
           "https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js";
@@ -201,7 +99,7 @@ const QRCodeGenerator = () => {
       qrContainerRef.current.appendChild(canvas);
 
       // Generate QR code
-      const qr = new (window as any).QRious({
+      const qr = new window.QRious({
         element: canvas,
         value: text,
         size: 300,
@@ -310,7 +208,6 @@ END:VCARD`;
       const tempCanvas = document.createElement("canvas");
 
       if ((window as any).QRious) {
-        // Generate high-res QR code at the selected download size
         new (window as any).QRious({
           element: tempCanvas,
           value: qrData,
@@ -322,7 +219,7 @@ END:VCARD`;
 
         // Download the high-res version
         const link = document.createElement("a");
-        link.download = `qr-code-${activeTab}-${downloadSize}px.png`;
+        link.download = `qr-code-${activeTab}-${Download}px.png`;
         link.href = tempCanvas.toDataURL("image/png");
         link.click();
       } else {
@@ -375,7 +272,6 @@ END:VCARD`;
       qrContainerRef.current.innerHTML = "";
     }
   };
-
   const tabs = [
     { id: "url", label: t("urlTab"), icon: Link },
     { id: "text", label: t("textTab"), icon: MessageSquare },
@@ -621,9 +517,6 @@ END:VCARD`;
                         }
                         className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 transition-all duration-200 focus:border-transparent focus:ring-2 focus:ring-purple-500"
                       >
-                        <option value={500}>{t("sizeSmall")}</option>
-                        <option value={1000}>{t("sizeMedium")}</option>
-                        <option value={2000}>{t("sizeLarge")}</option>
                         <option value={4000}>{t("sizeXLarge")}</option>
                         <option value={8000}>{t("sizeMaximum")}</option>
                       </select>
@@ -659,16 +552,18 @@ END:VCARD`;
                       </button>
                     </div>
 
-                    <div className="w-full max-w-sm">
-                      <h3 className="mb-2 text-sm font-medium text-gray-700">
-                        {t("qrCodeData")}
-                      </h3>
-                      <div className="max-h-32 overflow-y-auto rounded-lg bg-gray-100 p-3 text-xs text-gray-600">
-                        <pre className="break-words whitespace-pre-wrap">
-                          {qrData}
-                        </pre>
+                    {qrData && (
+                      <div className="w-full max-w-sm">
+                        <h3 className="mb-2 text-sm font-medium text-gray-700">
+                          {t("qrCodeData")}
+                        </h3>
+                        <div className="max-h-32 overflow-y-auto rounded-lg bg-gray-100 p-3 text-xs text-gray-600">
+                          <pre className="break-words whitespace-pre-wrap">
+                            {qrData}
+                          </pre>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </>
                 )}
               </div>
