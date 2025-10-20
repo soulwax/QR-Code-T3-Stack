@@ -1,7 +1,7 @@
 // File: src/app/layout.tsx
 
 import { type Metadata } from "next";
-import "../styles/globals.css";
+import "~/styles/globals.css";
 
 export const metadata: Metadata = {
   title: "QR Code Generator",
